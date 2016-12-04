@@ -2,12 +2,16 @@ from led import rambilight
 from calibration import edge_calibration
 from calibration import color_calibration
 from led import rambilight
+from imutils.video.pivideostream import PiVideoStream
 import argparse
 import logging
 import sys
 import os
 import imutils
 sys.path.insert(1, "/usr/local/lib/python2.7/site-packages/")
+
+logging.basicConfig(level=logging.INFO)
+
 
 
 ap = argparse.ArgumentParser()

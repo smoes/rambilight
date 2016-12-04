@@ -1,9 +1,11 @@
 import pychromecast
 import server
+import logging
 
 cast = None
 
 def get_chromecast():
+    global cast
     if not cast:
         chromecasts = pychromecast.get_chromecasts_as_dict().keys()
         if len(chromecasts) == 0:
@@ -15,7 +17,7 @@ def get_chromecast():
 def show_on_chromecast(url, cast):
     mc = cast.media_controller
     logging.info("Displaying url " + url + " on chromecast.")
-    mv.play_media(url, 'image/jpg')
+    mc.play_media(url, 'image/jpg')
 
 
 def quit_app(cast):

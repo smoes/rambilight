@@ -37,34 +37,34 @@ def calibration_image(res, coords):
     return image
 
 
-def left_coords(res, num_led_height):
+def left_coords_fn(res, num_led_height):
     height = res[1]
     width  = res[0]
     steps_height = (height - border_top * 2) / (num_led_height - 1)
-    return [(border_left + circle_radius * 2, border_top + circle_radius + steps_height * i) for i in range(0, num_led_height)]
+    return [(border_left, border_top + steps_height * i) for i in range(0, num_led_height)]
 
 
-def right_coords(res, num_led_height):
+def right_coords_fn(res, num_led_height):
     height = res[1]
     width  = res[0]
     steps_height = (height - border_top * 2) / (num_led_height - 1)
-    return [(width - border_left - circle_radius, border_top + circle_radius + steps_height * i) for i in range(0, num_led_height)]
+    return [(width - border_left, border_top + steps_height * i) for i in range(0, num_led_height)]
 
 
 
-def top_coords(res, num_led_width):
+def top_coords_fn(res, num_led_width):
     height = res[1]
     width  = res[0]
     steps_width  = (width  - border_left * 2) / (num_led_width - 1)
-    return [(border_left + steps_width * i,border_top + circle_radius) for i in range(0, num_led_width)]
+    return [(border_left + steps_width * i,border_top) for i in range(0, num_led_width)]
 
 
-def bottom_coords(res, num_led_width):
+def bottom_coords_fn(res, num_led_width):
 
     height = res[1]
     width  = res[0]
     steps_width  = (width  - border_left * 2) / (num_led_width - 1)
-    return [(border_left + steps_width * i,height - border_top - circle_radius) for i in range(0, num_led_width)]
+    return [(border_left + steps_width * i,height - border_top) for i in range(0, num_led_width)]
 
 
 
@@ -85,11 +85,11 @@ def blob_detector():
 
 def find_edges_one_side(vs, side, calib_image, order):
     file_name = "calibration_" + side + ".jpg"
-    cv2.imwrite(server.build_file_path(file_name))
+    cv2.imwrite(server.build_file_path(file_name), calib_image)
     time.sleep(0.5)
 
     cast = chromecast.get_chromecast()
-    chromcast.show_on_chromecast(server.build_url(file_name), cast)
+    chromecast.show_on_chromecast(server.build_url(file_name), cast)
     time.sleep(5)
 
     img = vs.read()
@@ -104,25 +104,25 @@ def find_edges_one_side(vs, side, calib_image, order):
 def find_edges(vs, res, num_led_width, num_led_height):
 
     left_fn     = lambda points : reversed(sorted(points, key=lambda p : p[1]))
-    left_coords = left_coords(res, num_led_height)
+    left_coords = left_coords_fn(res, num_led_height)
     left_img    = calibration_image(res, left_coords)
     left_name   = "left"
     left_edges  = find_edges_one_side(vs, left_name, left_img, left_fn)
 
     right_fn    = lambda points : sorted(points, key=lambda p : p[1])
-    right_coords= right_coords(res, num_led_height)
+    right_coords= right_coords_fn(res, num_led_height)
     right_img   = calibration_image(res, right_coords)
     right_name  = "right"
     right_edges = find_edges_one_side(vs, right_name, right_img, right_fn)
 
     top_fn      = lambda points : sorted(points, key=lambda p : p[0])
-    top_coords  = top_coords(res, num_led_width)
+    top_coords  = top_coords_fn(res, num_led_width)
     top_img     = calibration_image(res, top_coords)
     top_name    = "top"
     top_edges   = find_edges_one_side(vs, top_name, top_img, top_fn)
 
     bottom_fn   = lambda points : reversed(sorted(points, key=lambda p : p[0]))
-    bottom_coords=bottom_coords(res, num_led_width)
+    bottom_coords=bottom_coords_fn(res, num_led_width)
     bottom_img  = calibration_image(res, bottom_coords)
     bottom_name = "bottom"
     bottom_edges= fond_edges_one_side(vs, bottom_name, bottom_img, bottom_fn)
