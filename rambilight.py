@@ -17,6 +17,7 @@ args = vars(ap.parse_args())
 
 
 
+
 stream = PiVideoStream(resolution=(1296, 972), framerate = 30).start()
 
 edge_config = "config/edges.conf"

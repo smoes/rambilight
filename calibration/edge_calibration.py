@@ -88,7 +88,8 @@ def find_edges_one_side(vs, side, calib_image, order):
     cv2.imwrite(server.build_file_path(file_name))
     time.sleep(0.5)
 
-    chromcast.show_on_chromecast(server.build_url(file_name))
+    cast = chromecast.get_chromecast()
+    chromcast.show_on_chromecast(server.build_url(file_name), cast)
     time.sleep(5)
 
     img = vs.read()
@@ -154,7 +155,8 @@ def find_edges(vs, res, num_led_width, num_led_height):
 
     calib_fname = "calibration.jpg"
     cv2.imwrite(server.build_file_path(calib_fname), img)
-    chromecast.show_on_chromecast(server.build_url(fname));
+    cast = chromecast.get_chromecast()
+    chromecast.show_on_chromecast(server.build_url(fname), cast);
     time.sleep(10)
     cast2.quit_app()
 
