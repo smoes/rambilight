@@ -23,3 +23,4 @@ def show_on_chromecast(url, cast):
 def quit_app(cast):
     logging.info("Quitting app.")
     cast.quit_app()
+    cast.wait()

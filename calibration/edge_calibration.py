@@ -72,7 +72,7 @@ def blob_detector():
     # create a simple blob detector
     params = cv2.SimpleBlobDetector_Params()
     params.filterByArea = True
-    params.minArea = 1
+    params.minArea = 5 
     params.filterByColor = 1
     params.blobColor = 255
     params.filterByCircularity = False
@@ -83,86 +83,105 @@ def blob_detector():
     return cv2.SimpleBlobDetector_create(params)
 
 
-def find_edges_one_side(vs, side, calib_image, order):
+def find_edges_one_side(vs, side, calib_image, order, detector):
     file_name = "calibration_" + side + ".jpg"
+    file_path = server.build_file_path(file_name)
+    logging.info("Writing " + side + "-calibration file to " + file_path)
     cv2.imwrite(server.build_file_path(file_name), calib_image)
     time.sleep(0.5)
 
     cast = chromecast.get_chromecast()
+    cast.quit_app()
     chromecast.show_on_chromecast(server.build_url(file_name), cast)
-    time.sleep(5)
+    time.sleep(7)
 
     img = vs.read()
-    img = cv2.fastNlMeansDenoisingColored(img,None,10,10,7,21)
+    cv2.imwrite(side + ".jpg", img)
+    #img = cv2.fastNlMeansDenoisingColored(img,None,10,10,7,21)
     keypoints = detector.detect(img)
 
-    coords = map(lambda kp: (kp.pt.x, kp.pt.y), keypoints)
+    coords = map(lambda kp: (kp.pt[0], kp.pt[1]), keypoints)
     return order(coords)
 
 
 
 def find_edges(vs, res, num_led_width, num_led_height):
 
-    left_fn     = lambda points : reversed(sorted(points, key=lambda p : p[1]))
+    detector = blob_detector()
+
+    left_fn     = lambda points : (sorted(points, key=lambda p : p[1])[::-1])
     left_coords = left_coords_fn(res, num_led_height)
     left_img    = calibration_image(res, left_coords)
     left_name   = "left"
-    left_edges  = find_edges_one_side(vs, left_name, left_img, left_fn)
+    left_edges  = find_edges_one_side(vs, left_name, left_img, left_fn, detector)
+    print left_edges
 
     right_fn    = lambda points : sorted(points, key=lambda p : p[1])
     right_coords= right_coords_fn(res, num_led_height)
     right_img   = calibration_image(res, right_coords)
     right_name  = "right"
-    right_edges = find_edges_one_side(vs, right_name, right_img, right_fn)
+    right_edges = find_edges_one_side(vs, right_name, right_img, right_fn, detector)
+    print right_edges
 
     top_fn      = lambda points : sorted(points, key=lambda p : p[0])
     top_coords  = top_coords_fn(res, num_led_width)
     top_img     = calibration_image(res, top_coords)
     top_name    = "top"
-    top_edges   = find_edges_one_side(vs, top_name, top_img, top_fn)
+    top_edges   = find_edges_one_side(vs, top_name, top_img, top_fn, detector)
+    print top_edges
 
-    bottom_fn   = lambda points : reversed(sorted(points, key=lambda p : p[0]))
+    bottom_fn   = lambda points : (sorted(points, key=lambda p : p[0])[::-1])
     bottom_coords=bottom_coords_fn(res, num_led_width)
     bottom_img  = calibration_image(res, bottom_coords)
     bottom_name = "bottom"
-    bottom_edges= fond_edges_one_side(vs, bottom_name, bottom_img, bottom_fn)
-
-    if len(left_edges) != num_led_height:
-        logger.error("Wrong number of edge blobs in left edge " +
-                     "detected ("+len(left_edges)+", expected: " + num_led_height)
-        sys.exit()
-
-    if len(right_edges) != num_led_height:
-        logger.error("Wrong number of edge blobs in right edge " +
-                     "detected ("+len(right_edges)+", expected: " + num_led_height)
-        sys.exit()
-
-    if len(top_edges) != num_led_width:
-        logger.error("Wrong number of edge blobs in top edge " +
-                     "detected ("+len(top_edges)+", expected: " + num_led_width)
-        sys.exit()
-
-    if len(bottom_edges) != num_led_width:
-        logger.error("Wrong number of edge blobs in bottom edge " +
-                     "detected ("+len(bottom_edges)+", expected: " + num_led_width)
-        sys.exit()
+    bottom_edges= find_edges_one_side(vs, bottom_name, bottom_img, bottom_fn, detector)
+    print bottom_edges
 
     all_blobs = left_edges + top_edges + right_edges + bottom_edges
 
-    img = cv2.read()
+    img = vs.read()
     for blob in all_blobs:
-        cv2.circle(img, coord, 5, (255,0,0), -1)
+	blob_coords = (int(blob[0]), int(blob[1]))
+        cv2.circle(img, blob_coords, 5, (255,0,0), -1)
 
     calib_fname = "calibration.jpg"
     cv2.imwrite(server.build_file_path(calib_fname), img)
+
     cast = chromecast.get_chromecast()
-    chromecast.show_on_chromecast(server.build_url(fname), cast);
+    chromecast.show_on_chromecast(server.build_url(calib_fname), cast);
     time.sleep(10)
-    cast2.quit_app()
+    cast.quit_app()
+
+
+    if len(left_edges) != num_led_height:
+        logging.error("Wrong number of edge blobs in left edge " +
+                     "detected ("+str(len(left_edges))+", expected: " + 
+                      str(num_led_height))
+        sys.exit()
+
+    if len(right_edges) != num_led_height:
+        logging.error("Wrong number of edge blobs in right edge " +
+                     "detected ("+str(len(right_edges))+", expected: " + 
+                      str(num_led_height))
+        sys.exit()
+
+    if len(top_edges) != num_led_width:
+        logging.error("Wrong number of edge blobs in top edge " +
+                     "detected ("+str(len(top_edges))+", expected: " + 
+		     str(num_led_width))
+        sys.exit()
+
+    if len(bottom_edges) != num_led_width:
+        logging.error("Wrong number of edge blobs in bottom edge " +
+                     "detected ("+str(len(bottom_edges))+", expected: " + 
+		     str(num_led_width))
+        sys.exit()
+
+
 
     with_led_num = enumerate(all_blobs)
     reverse = map(lambda enumerated: (enumerated[1], enumerated[0]), with_led_num)
-    return with_led_num
+    return reverse
 
 
 def file_name(res, num_led_width, num_led_height):

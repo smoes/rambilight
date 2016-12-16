@@ -9,6 +9,7 @@ class RambilightDriver(threading.Thread):
         self.threadID = threadID
         sorted_coordinates = sorted(coordinates_to_led, key=lambda t: t[1])
         self.coordinates_to_led = sorted_coordinates
+	self.mode = 'light'
         self.stream = stream
 
     def run(self):
