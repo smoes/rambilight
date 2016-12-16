@@ -17,22 +17,28 @@ logging.basicConfig(level=logging.INFO)
 ap = argparse.ArgumentParser()
 ap.add_argument("-c", "--calibrate", type=int, default=-1,
 	help="Weather the camera gets calibrated before-hand.")
+ap.add_argument("-s", "--storecalib", type=int, default=-1,
+	            help="Weather newly found calibration should be stored.")
 args = vars(ap.parse_args())
 
 
 
 
-stream = PiVideoStream(resolution=(1296, 972), framerate = 30).start()
+stream = PiVideoStream(resolution=(640, 480), framerate = 30).start()
 
 edge_config = "config/edges.conf"
+
+tv_res = (1920, 1080)
 
 edges = []
 
 if args["calibrate"] > 0:
-    edges = edge_calibration.find_edges(stream, (1920, 1080), 25, 15)
-    if args["store-calibration"] > 0:
+    edges = edge_calibration.find_edges(stream, tv_res, 25, 15)
+
+    if args["storecalib"] > 0:
         edge_calibration.backup_edges(edges, edge_config)
-    color_calibration.calibrate(stream)
+    color_calibration.calibrate(stream, edges)
+
 else:
     if os.path.exists(edge_config):
         edges = edge_calibration.load_edge_calibration(edge_config)
