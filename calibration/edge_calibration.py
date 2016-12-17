@@ -1,10 +1,10 @@
 import sys
 sys.path.insert(1, "/usr/local/lib/python2.7/site-packages/")
+import cv2
 import imutils
 import time
 import io
 import os.path
-import cv2
 import pickle
 import numpy as np
 import server
@@ -19,10 +19,13 @@ border_left = 90
 
 
 def backup_edges(edges, f):
-    pickle.dump(edges, f)
+    with open(f, 'w+') as handle:
+	logging.info(str(edges))
+        pickle.dump(edges, handle)
 
 def load_edge_calibration(f):
-    pickle.load(f)
+    with open(f, 'r') as handle:
+    	return pickle.load(handle)
 
 def calibration_image(res, coords):
     height = res[1]
@@ -100,7 +103,7 @@ def find_edges_one_side(vs, side, calib_image, order, detector):
     #img = cv2.fastNlMeansDenoisingColored(img,None,10,10,7,21)
     keypoints = detector.detect(img)
 
-    coords = map(lambda kp: (kp.pt[0], kp.pt[1]), keypoints)
+    coords = map(lambda kp: (int(kp.pt[0]), int(kp.pt[1])), keypoints)
     return order(coords)
 
 
