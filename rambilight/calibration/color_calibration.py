@@ -2,7 +2,7 @@ import time
 import math
 import pickle
 from server import server
-from chromecast import chromecast
+from lib import chromecast
 import sys
 sys.path.insert(1, "/usr/local/lib/python2.7/site-packages/")
 import cv2
@@ -22,10 +22,12 @@ def decent_constant_calibration(camera):
     camera.shutter_speed = 15900
 
 def backup_calibration(calib, f):
+    logging.info("Writing color backup to " + str(f))
     with open(f, 'w+') as handle:
         pickle.dump(calib, handle)
 
 def load_calibration(f, stream):
+    logging.info("Loading and applying color backup from " + str(f))
     with open(f, 'r') as handle:
     	load_calibration_helper(pickle.load(handle), stream)
 
@@ -33,7 +35,6 @@ def load_calibration_helper(params, stream):
     camera = stream.camera
     logging.info("Applying a stored calibration.")
     (gains, shutter) = params
-    print(str(shutter))
     camera.awb_mode = 'off'
     camera.exposure_mode = 'off'
     camera.iso = 800

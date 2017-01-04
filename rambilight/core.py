@@ -1,6 +1,6 @@
 import threading
 import time
-import ws2801
+from lib import ws2801
 import Adafruit_WS2801
 import numpy as np
 import sys
@@ -8,12 +8,13 @@ sys.path.insert(1, "/usr/local/lib/python2.7/site-packages/")
 import cv2
 
 class RambilightDriver(threading.Thread):
+
     def __init__(self, threadID, coordinates_to_led, stream):
         threading.Thread.__init__(self)
         ws2801.init_pixels(86)
         self.threadID = threadID
-        sorted_coordinates = sorted(coordinates_to_led, key=lambda t: t[1])
-        self.coordinates_to_led = sorted_coordinates
+        self.stopped = False
+        self.coordinates_to_led = sorted(coordinates_to_led, key=lambda t: t[1])
         self.stream = stream
 
     def run(self):
@@ -28,6 +29,8 @@ class RambilightDriver(threading.Thread):
         former_pixels = [(255,255,255)] * len(self.coordinates_to_led)
 
         while True:
+            if self.stopped:
+                break
 
             frame = self.stream.read()
 
@@ -73,10 +76,12 @@ class RambilightDriver(threading.Thread):
             ws2801.pixels.show()
 
     def stop(self):
+        self.stopped = True
+        time.sleep(0.5)
         ws2801.turn_off()
         ws2801.turn_off()
-        self._stop.set()
 
+    
 def shift(list, element):
     return (list + [element])[1:]
 

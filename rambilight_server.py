@@ -1,26 +1,24 @@
 #!/usr/bin/env python
 #coding: utf8
 
-from led import rambilight
-import staticlight
-from calibration import edge_calibration
-from calibration import color_calibration
-from led import rambilight
-from imutils.video.pivideostream import PiVideoStream
-from led import ws2801
-from server import server
-import argparse
-from led.rambilight import RambilightDriver
 import logging
 import sys
 import os
 import time
-import imutils
-sys.path.insert(1, "/usr/local/lib/python2.7/site-packages/")
-
-logging.basicConfig(level=logging.INFO)
 import lirc
-import time
+from collections import deque
+
+from staticlight import core as staticlight_program
+
+from rambilight.calibration import edge_calibration
+from rambilight.calibration import color_calibration
+from rambilight import program as rambilight_program
+
+from lib import ws2801
+from server import server
+
+logging.basicConfig(format='[%(levelname)s][%(module)s] %(message)s', level=logging.INFO)
+
 
 # turn of the lights intitially ;)
 ws2801.turn_off()
@@ -28,59 +26,38 @@ ws2801.turn_off()
 
 sockid=lirc.init("ambilight-server", blocking = False)
 
-stream = PiVideoStream(resolution=(640, 480), framerate = 30).start()
-time.sleep(2)
+
+
+def power_action(current, programs):
+    if current is not None:
+        logging.info("Stopping " + current.name())
+        current.stop_program()
+    else:
+        logging.info("Running rambilight light")
+        programs[0].run_program()
+        return programs[0]
+
+
+def next_action(current, programs):
+    if current is not None:
+        current.stop_program()
+        programs.rotate(-1)
+    logging.info("Switching to " + programs[0].name())
+    programs[0].run_program()
+    return (programs[0], programs)
+
 
 current = None
+programs = deque([rambilight_program, staticlight_program])
+logging.info("Rambilight server started")
+
 
 while True:
     codeIR = lirc.nextcode()
-    if codeIR[0] == "KEY_POWER":
-        if current is not None:
-            current[1].stop()
-        else:
-            current = run_rambilight()
-    if codeIR[0] == "KEY_MODE":
-        if current is not None:
-            current[1].stop()
-            if current[0] == "rambilight":
-                run_static_light()
-            else:
-                run_rambilight()
+    if codeIR != []:
+        if codeIR[0] == "KEY_POWER": 
+            current = power_action(current, programs)
+        if codeIR[0] == "KEY_MENU":
+            (current, programs) = next_action(current, programs)
 
     time.sleep(0.5)
-
-
-def run_static_light():
-    staticlight.run()
-    return ("staticlight", staticlight)
-
-
-def run_rambilight():
-    edges = []
-    if os.path.exists(edge_config):
-        logging.info("Loading existing edge configuration")
-        edges = edge_calibration.load_edge_calibration(edge_config)
-    else:
-        sys.exit()
-
-
-    edge_config = "config/edges.pickle"
-    color_config = "config/colors.pickle"
-
-    tv_res = (1920, 1080)
-    led_width = 28
-    led_height = 15
-
-    edges = []
-
-    if os.path.exists(color_config):
-        logging.info("Loading existing color configuration")
-        color_calibration.load_calibration(color_config, stream)
-    else:
-        color_calibration.decent_constant_calibration(stream.camera)
-
-
-    rambilight = RambilightDriver(1, edges, stream)
-    rambilight.start()
-    return ("rambilight", rambilight)

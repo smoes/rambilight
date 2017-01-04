@@ -11,7 +11,7 @@ import server
 import logging
 import sys
 from server import server
-from chromecast import chromecast
+from lib import chromecast
 
 
 border_top = 90
@@ -19,11 +19,14 @@ border_left = 90
 
 
 def backup_edges(edges, f):
+    logging.info("Writing edge backup to " + str(f))
     with open(f, 'w+') as handle:
 	logging.info(str(edges))
         pickle.dump(edges, handle)
 
+
 def load_edge_calibration(f):
+    logging.info("Loading edge backup from " + str(f))
     with open(f, 'r') as handle:
     	return pickle.load(handle)
 
@@ -117,28 +120,24 @@ def find_edges(vs, res, num_led_width, num_led_height):
     left_img    = calibration_image(res, left_coords)
     left_name   = "left"
     left_edges  = find_edges_one_side(vs, left_name, left_img, left_fn, detector)
-    print left_edges
 
     right_fn    = lambda points : sorted(points, key=lambda p : p[1])
     right_coords= right_coords_fn(res, num_led_height)
     right_img   = calibration_image(res, right_coords)
     right_name  = "right"
     right_edges = find_edges_one_side(vs, right_name, right_img, right_fn, detector)
-    print right_edges
 
     top_fn      = lambda points : sorted(points, key=lambda p : p[0])
     top_coords  = top_coords_fn(res, num_led_width)
     top_img     = calibration_image(res, top_coords)
     top_name    = "top"
     top_edges   = find_edges_one_side(vs, top_name, top_img, top_fn, detector)
-    print top_edges
 
     bottom_fn   = lambda points : (sorted(points, key=lambda p : p[0])[::-1])
     bottom_coords=bottom_coords_fn(res, num_led_width)
     bottom_img  = calibration_image(res, bottom_coords)
     bottom_name = "bottom"
     bottom_edges= find_edges_one_side(vs, bottom_name, bottom_img, bottom_fn, detector)
-    print bottom_edges
 
     all_blobs = left_edges + top_edges + right_edges + bottom_edges
 
@@ -153,34 +152,17 @@ def find_edges(vs, res, num_led_width, num_led_height):
     cast = chromecast.get_chromecast()
     chromecast.show_on_chromecast(server.build_url(calib_fname), cast);
     time.sleep(10)
+
     cast.quit_app()
 
-
-    if len(left_edges) != num_led_height:
-        logging.error("Wrong number of edge blobs in left edge " +
-                     "detected ("+str(len(left_edges))+", expected: " + 
-                      str(num_led_height))
-        sys.exit()
-
-    if len(right_edges) != num_led_height:
-        logging.error("Wrong number of edge blobs in right edge " +
-                     "detected ("+str(len(right_edges))+", expected: " + 
-                      str(num_led_height))
-        sys.exit()
-
-    if len(top_edges) != num_led_width:
-        logging.error("Wrong number of edge blobs in top edge " +
-                     "detected ("+str(len(top_edges))+", expected: " + 
-		     str(num_led_width))
-        sys.exit()
-
-    if len(bottom_edges) != num_led_width:
-        logging.error("Wrong number of edge blobs in bottom edge " +
-                     "detected ("+str(len(bottom_edges))+", expected: " + 
-		     str(num_led_width))
-        sys.exit()
-
-
+    for (t, e, n) in [("left",  left_edges,  num_led_height), 
+                   ("right", right_edges, num_led_height),
+                   ("top",   top_edges,   num_led_width),
+                   ("bottom",bottom_edges,num_led_width)]:
+        if len(e) != n:
+            logging.error("Wrong number of blobs in " + t + " edge" + 
+                          "(" + str(len(e)) + "/" + str(n) + ")")
+            return False
 
     with_led_num = enumerate(all_blobs)
     reverse = map(lambda enumerated: (enumerated[1], enumerated[0]), with_led_num)
