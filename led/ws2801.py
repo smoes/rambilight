@@ -2,7 +2,7 @@
 import Adafruit_WS2801
 import Adafruit_GPIO.SPI as SPI
 
-PIXEL_COUNT = 200
+PIXEL_COUNT = 86
 
 SPI_PORT   = 0
 SPI_DEVICE = 1

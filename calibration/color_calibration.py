@@ -36,6 +36,7 @@ def load_calibration_helper(params, stream):
     print(str(shutter))
     camera.awb_mode = 'off'
     camera.exposure_mode = 'off'
+    camera.iso = 800
     camera.awb_gains = gains
     camera.shutter_speed = shutter
 
@@ -90,7 +91,7 @@ def calibrate_color(stream):
     camera = stream.camera
     camera.awb_mode='auto'
     camera.exposure_mode='auto'
-    camera.iso = 400
+    camera.iso = 800
     time.sleep(5)
     gains = stream.camera.awb_gains
     camera.awb_mode='off'
