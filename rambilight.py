@@ -29,6 +29,7 @@ args = vars(ap.parse_args())
 server.init_simple_http()
 
 ws2801.turn_off()
+ws2801.turn_off()
 
 stream = PiVideoStream(resolution=(640, 480), framerate = 30).start()
 time.sleep(2)
