@@ -2,7 +2,7 @@
 #coding: utf8
 
 from led import rambilight
-from led import staticlight
+import staticlight
 from calibration import edge_calibration
 from calibration import color_calibration
 from led import rambilight
@@ -42,13 +42,18 @@ while True:
             current = run_rambilight()
     if codeIR[0] == "KEY_MODE":
         if current is not None:
-            current[1].stop
+            current[1].stop()
             if current[0] == "rambilight":
                 run_static_light()
             else:
                 run_rambilight()
 
     time.sleep(0.5)
+
+
+def run_static_light():
+    staticlight.run()
+    return ("staticlight", staticlight)
 
 
 def run_rambilight():
