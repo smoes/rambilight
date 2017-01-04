@@ -31,17 +31,6 @@ server.init_simple_http()
 ws2801.turn_off()
 ws2801.turn_off()
 
-stream = PiVideoStream(resolution=(640, 480), framerate = 30).start()
-time.sleep(2)
-
-edge_config = "config/edges.pickle"
-color_config = "config/colors.pickle"
-
-tv_res = (1920, 1080)
-led_width = 28
-led_height = 15
-
-edges = []
 
 if args["edges"] > 0:
     edges = edge_calibration.find_edges(stream, tv_res, led_width, led_height)

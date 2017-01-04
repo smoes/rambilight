@@ -10,10 +10,10 @@ import cv2
 class RambilightDriver(threading.Thread):
     def __init__(self, threadID, coordinates_to_led, stream):
         threading.Thread.__init__(self)
+        ws2801.init_pixels(86)
         self.threadID = threadID
         sorted_coordinates = sorted(coordinates_to_led, key=lambda t: t[1])
         self.coordinates_to_led = sorted_coordinates
-	self.mode = 'light'
         self.stream = stream
 
     def run(self):
@@ -23,18 +23,17 @@ class RambilightDriver(threading.Thread):
         fade_levels = 2
         blur_area = 8
         blur_strength = 12
-        
+
         registers = [[(255,255,255)] * shift_register_length] * len(self.coordinates_to_led)
         former_pixels = [(255,255,255)] * len(self.coordinates_to_led)
-        
 
         while True:
 
             frame = self.stream.read()
-            
+
             # this could be a map over former_pixels
             for (coord, led_num) in self.coordinates_to_led:
- 
+
                 x_min = max(coord[1] - blur_area, 0)
                 x_max = coord[1] + blur_area
                 y_min = max(coord[0] - blur_area, 0)
@@ -74,8 +73,9 @@ class RambilightDriver(threading.Thread):
             ws2801.pixels.show()
 
     def stop(self):
+        ws2801.turn_off()
+        ws2801.turn_off()
         self._stop.set()
-        
 
 def shift(list, element):
     return (list + [element])[1:]
@@ -100,31 +100,10 @@ def average_without_aberration(colors, num_aberration, old_color):
     sum = (0,0,0)
     for color in bestn:
         sum = (sum[0] + color[0], sum[1] + color[1], sum[2] + color[2]) 
-        
+
     n = len(bestn)
     return (int(sum[0]/n), int(sum[1]/n), int(sum[2]/2))
 
-
-def add_colors(a, b):
-    return (a[0] + b[0], a[1] + b[1], a[2] + b[2])
-
-def subtr_colors(a,b):
-    return 
-
-def abs_color(a):
-    return 
-
-def div_color(a, c):
-    assert (c != 0)
-    return (int(a[0] / c), int(a[1] / c), int(a[2] / c))
-
-def sum_color(a):
-    return a[0] + a[1] + a[2]
-
-def average_colors(list):
-    num_colors = len(list)
-    colors_sum = reduce(add_colors, list)
-    return div_color(colors_sum, num_colors)
 
 def s(i):
     return 1 if (i > 0) else -1
