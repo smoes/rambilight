@@ -2,7 +2,6 @@ import threading
 import time
 import ws2801
 import Adafruit_WS2801
-import Adafruit_GPIO.SPI as SPI
 import sys
 sys.path.insert(1, "/usr/local/lib/python2.7/site-packages/")
 import cv2
