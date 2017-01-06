@@ -38,7 +38,7 @@ def keybindings():
             'KEY_UP':    increase_blue,
             'KEY_DOWN':  decrease_blue,
             'KEY_OK':    increase_green,
-            'KEY_BACK':  decrease_green }
+            'KEY_INFO':  decrease_green }
 
 
 def increase_red():
