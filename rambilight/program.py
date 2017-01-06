@@ -19,8 +19,8 @@ tv_res = (1920, 1080)
 led_width = 28
 led_height = 15
 
-edge_config = "rambilight/config/edges.pickle"
-color_config = "rambilight/config/colors.pickle"
+edge_file = "rambilight/config/edges.pickle"
+color_file = "rambilight/config/colors.pickle"
 
 def stop_program():
 
@@ -49,9 +49,9 @@ def run_program():
 
     edges = load_edges()
 
-    if os.path.exists(color_config):
+    if os.path.exists(color_file):
         logging.info("Loading existing color configuration")
-        color_calibration.load_calibration(color_config, stream)
+        color_calibration.load_calibration(color_file, stream)
     else:
         logging.info("No existing color calibration found!")
         logging.info("Falling back to standard calibration.")
@@ -64,9 +64,9 @@ def run_program():
 
 
 def load_edges():
-    if os.path.exists(edge_config):
+    if os.path.exists(edge_file):
         logging.info("Loading existing edge configuration")
-        return edge_calibration.load_edge_calibration(edge_config)
+        return edge_calibration.load_edge_calibration(edge_file)
     else:
         logging.info("No existing edge configuration found")
         return None
@@ -83,7 +83,8 @@ def keybindings():
             'KEY_OK': ri.inc_g_shift,
             'KEY_INFO': ri.dec_g_shift,
             'KEY_MODE': ri.dec_brightness,
-            'KEY_SUBTITLE': ri.inc_brightness
+            'KEY_SUBTITLE': ri.inc_brightness,
+            'KEY_BACK': ri.reset_settings
     }
 
 def calibrate_edges():
@@ -97,7 +98,7 @@ def calibrate_edges():
     edges = edge_calibration.find_edges(stream, tv_res, led_width, led_height)
 
     if edges:
-        edge_calibration.backup_edges(edges, edge_config)
+        edge_calibration.backup_edges(edges, edge_file)
         rambilight_instance.unpause()
 
 def calibrate_color():
@@ -114,9 +115,8 @@ def calibrate_color():
         calib = color_calibration.calibrate(stream, edges, tv_res, led_width, led_height)
 
     if calib:
-        color_calibration.backup_calibration(calib, color_config)
+        color_calibration.backup_calibration(calib, color_file)
         rambilight_instance.unpause()
-
 
 
 def name():
