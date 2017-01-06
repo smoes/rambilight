@@ -21,8 +21,8 @@ border_left = 90
 def backup_edges(edges, f):
     logging.info("Writing edge backup to " + str(f))
     with open(f, 'w+') as handle:
-	logging.info(str(edges))
-        pickle.dump(edges, handle)
+       logging.info(str(edges))
+       pickle.dump(edges, handle)
 
 
 def load_edge_calibration(f):
