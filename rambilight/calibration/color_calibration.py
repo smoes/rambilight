@@ -1,7 +1,7 @@
 import time
 import math
 import pickle
-from server import server
+from lib import server
 from lib import chromecast
 import sys
 sys.path.insert(1, "/usr/local/lib/python2.7/site-packages/")

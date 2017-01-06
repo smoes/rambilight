@@ -4,7 +4,6 @@ from calibration import color_calibration
 from led import rambilight
 from imutils.video.pivideostream import PiVideoStream
 from led import ws2801
-from server import server
 import argparse
 from led.rambilight import RambilightDriver
 import logging
@@ -26,7 +25,6 @@ ap.add_argument("-c", "--color", type=int, default=-1,
 args = vars(ap.parse_args())
 
     
-server.init_simple_http()
 
 ws2801.turn_off()
 ws2801.turn_off()

@@ -7,10 +7,10 @@ import io
 import os.path
 import pickle
 import numpy as np
-import server
 import logging
 import sys
-from server import server
+from lib import ws2801
+from lib import server
 from lib import chromecast
 
 
@@ -78,13 +78,13 @@ def blob_detector():
     # create a simple blob detector
     params = cv2.SimpleBlobDetector_Params()
     params.filterByArea = True
-    params.minArea = 5 
+    params.minArea = 4
     params.filterByColor = 1
     params.blobColor = 255
     params.filterByCircularity = False
     params.filterByInertia = False
     params.filterByConvexity = 1
-    params.minConvexity = 0.8
+    params.minConvexity = 0.7
 
     return cv2.SimpleBlobDetector_create(params)
 
@@ -97,9 +97,10 @@ def find_edges_one_side(vs, side, calib_image, order, detector):
     time.sleep(0.5)
 
     cast = chromecast.get_chromecast()
-    cast.quit_app()
-    chromecast.show_on_chromecast(server.build_url(file_name), cast)
-    time.sleep(7)
+    if cast:
+        cast.quit_app()
+        chromecast.show_on_chromecast(server.build_url(file_name), cast)
+        time.sleep(7)
 
     img = vs.read()
     cv2.imwrite(side + ".jpg", img)
@@ -150,10 +151,11 @@ def find_edges(vs, res, num_led_width, num_led_height):
     cv2.imwrite(server.build_file_path(calib_fname), img)
 
     cast = chromecast.get_chromecast()
-    chromecast.show_on_chromecast(server.build_url(calib_fname), cast);
-    time.sleep(10)
+    if cast:
+        chromecast.show_on_chromecast(server.build_url(calib_fname), cast);
+        time.sleep(10)
 
-    cast.quit_app()
+        cast.quit_app()
 
     for (t, e, n) in [("left",  left_edges,  num_led_height), 
                    ("right", right_edges, num_led_height),
@@ -162,10 +164,13 @@ def find_edges(vs, res, num_led_width, num_led_height):
         if len(e) != n:
             logging.error("Wrong number of blobs in " + t + " edge" + 
                           "(" + str(len(e)) + "/" + str(n) + ")")
+            ws2801.pulse_red()
             return False
 
     with_led_num = enumerate(all_blobs)
     reverse = map(lambda enumerated: (enumerated[1], enumerated[0]), with_led_num)
+    ws2801.pulse()
+    ws2801.pulse()
     return reverse
 
 

@@ -14,7 +14,13 @@ class RambilightDriver(threading.Thread):
         ws2801.init_pixels(86)
         self.threadID = threadID
         self.stopped = False
-        self.coordinates_to_led = sorted(coordinates_to_led, key=lambda t: t[1])
+        if coordinates_to_led:
+            self.paused = False
+            self.coordinates_to_led = sorted(coordinates_to_led, key=lambda t: t[1])
+        else: 
+            self.paused = True
+            self.coordinates_to_led = []
+            
         self.stream = stream
 
     def run(self):
@@ -29,8 +35,11 @@ class RambilightDriver(threading.Thread):
         former_pixels = [(255,255,255)] * len(self.coordinates_to_led)
 
         while True:
-            if self.stopped:
-                break
+
+            if self.stopped: break
+            if self.paused: 
+                time.sleep(1)
+                continue
 
             frame = self.stream.read()
 
@@ -80,6 +89,12 @@ class RambilightDriver(threading.Thread):
         time.sleep(0.5)
         ws2801.turn_off()
         ws2801.turn_off()
+
+    def pause(self):
+        self.paused = True
+ 
+    def unpause(self):
+        self.paused = False
 
     
 def shift(list, element):
