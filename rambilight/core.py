@@ -3,9 +3,13 @@ import time
 from lib import ws2801
 import Adafruit_WS2801
 import numpy as np
+import pickle
+import os
 import sys
 sys.path.insert(1, "/usr/local/lib/python2.7/site-packages/")
 import cv2
+
+settings_file = "rambilight/config/rambilight_settings.pickle"
 
 class RambilightDriver(threading.Thread):
 
@@ -22,10 +26,22 @@ class RambilightDriver(threading.Thread):
             self.coordinates_to_led = []
         self.stream = stream
 
-        self.r_shift = 0.85
-        self.b_shift = 0.63
-        self.g_shift = 0.95
-        self.brightness = 1.0
+        self.original_r_shift = 0.85
+        self.original_b_shift = 0.63
+        self.original_g_shift = 0.95
+
+        loaded = self.load_settings
+        if loaded is not None:
+            (r,g,b,brightness) = loaded
+            self.r_shift = r
+            self.b_shift = b
+            self.g_shift = g
+            self.brightness = brightness
+        else:
+            self.r_shift = self.original_r_shift
+            self.b_shift = self.original_b_shift
+            self.g_shift = self.original_g_shift
+            self.brightness = 1.0
 
 
     def run(self):
@@ -42,7 +58,7 @@ class RambilightDriver(threading.Thread):
         while True:
 
             if self.stopped: break
-            if self.paused: 
+            if self.paused:
                 time.sleep(1)
                 continue
 
@@ -106,30 +122,55 @@ class RambilightDriver(threading.Thread):
 
     def inc_r_shift(self):
         self.r_shift = self.inc_factor(self.r_shift)
+        self.backup_settings()
 
     def inc_g_shift(self):
         self.g_shift = self.inc_factor(self.g_shift)
+        self.backup_settings()
 
     def inc_b_shift(self):
         self.b_shift = self.inc_factor(self.b_shift)
+        self.backup_settings()
 
     def inc_brightness(self):
         self.brightness = self.inc_factor(self.brightness)
+        self.backup_settings()
 
     def dec_factor(self, val):
         return max(0.0, val - 0.5)
 
     def dec_r_shift(self):
         self.r_shift = self.dec_factor(self.r_shift)
+        self.backup_settings()
 
     def dec_g_shift(self):
         self.g_shift = self.dec_factor(self.g_shift)
+        self.backup_settings()
 
     def dec_b_shift(self):
         self.b_shift = self.dec_factor(self.b_shift)
+        self.backup_settings()
 
     def dec_brightness(self):
         self.brightness = self.dec_factor(self.brightness)
+        self.backup_settings()
+
+    def backup_settings(self):
+        with open(settings_file, 'w+') as handle:
+            pickle.dump((self.r_shift, self.g_shift, self.b_shift, self.brightness),
+                        settings_file)
+
+    def load_settings(self):
+        if os.path.exists(settings_file):
+            with open(settings_file, 'r') as handle:
+    	        return pickle.load(handle)
+        return None
+
+    def reset_settings(self):
+        self.b_shift = self.original_b_shift
+        self.g_shift = self.original_g_shift
+        self.r_shift = self.original_r_shift
+        self.brightness = 1.0
 
 
 def shift_elements(list, element):
