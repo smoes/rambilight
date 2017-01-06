@@ -73,8 +73,18 @@ def load_edges():
 
 
 def keybindings():
+    ri = rambilight_instance
     return {'KEY_STOP': calibrate_edges,
-            'KEY_PLAY': calibrate_color}
+            'KEY_PLAY': calibrate_color,
+            'KEY_LEFT': ri.dec_r_shift,
+            'KEY_RIGHT': ri.inc_r_shift,
+            'KEY_UP': ri.inc_b_shift,
+            'KEY_DOWN': ri.dec_b_shift,
+            'KEY_OK': ri.inc_g_shift,
+            'KEY_INFO': ri.dec_g_shift,
+            'KEY_MODE': ri.dec_brightness,
+            'KEY_SUBTITLE': ri.inc_brightness
+    }
 
 def calibrate_edges():
     rambilight_instance.pause()
@@ -106,7 +116,8 @@ def calibrate_color():
     if calib:
         color_calibration.backup_calibration(calib, color_config)
         rambilight_instance.unpause()
-     
+
+
 
 def name():
     return "rambilight"

@@ -17,11 +17,16 @@ class RambilightDriver(threading.Thread):
         if coordinates_to_led:
             self.paused = False
             self.coordinates_to_led = sorted(coordinates_to_led, key=lambda t: t[1])
-        else: 
+        else:
             self.paused = True
             self.coordinates_to_led = []
-            
         self.stream = stream
+
+        self.r_shift = 0.85
+        self.b_shift = 0.63
+        self.g_shift = 0.95
+        self.brightness = 1.0
+
 
     def run(self):
 
@@ -61,7 +66,7 @@ class RambilightDriver(threading.Thread):
 
                 former_r, former_g, former_b = former_pixels[led_num]
 
-                new_register = shift(registers[led_num], (r,g,b)) 
+                new_register = shift_elements(registers[led_num], (r,g,b)) 
                 smoothed_r, smoothed_g, smoothed_b = average_without_aberration(new_register, num_aberration, (former_r, former_g, former_b))
 
                 step_r = (smoothed_r - former_r) / fade_levels
@@ -74,7 +79,7 @@ class RambilightDriver(threading.Thread):
 
 
                 # this actually takes RBG?!
-                shifted_r, shifted_b, shifted_g = shift_color((new_r, new_b, new_g), (0.85, 0.69, 0.95))
+                shifted_r, shifted_b, shifted_g = shift_color((new_r, new_b, new_g), (r_shift, b_shift, g_shift))
                 output = Adafruit_WS2801.RGB_to_color(shifted_r, shifted_b, shifted_g)
                 ws2801.pixels.set_pixel(led_num, output)
 
@@ -92,12 +97,42 @@ class RambilightDriver(threading.Thread):
 
     def pause(self):
         self.paused = True
- 
+
     def unpause(self):
         self.paused = False
 
-    
-def shift(list, element):
+    def inc_factor(self, val):
+        return min(val + 0.1, 0.5)
+
+    def inc_r_shift(self):
+        self.r_shift = self.inc_factor(self.r_shift)
+
+    def inc_g_shift(self):
+        self.g_shift = self.inc_factor(self.g_shift)
+
+    def inc_b_shift(self):
+        self.b_shift = self.inc_factor(self.b_shift)
+
+    def inc_brightness(self):
+        self.brightness = self.inc_factor(self.brightness)
+
+    def dec_factor(self, val):
+        return max(0.0, val - 0.5)
+
+    def dec_r_shift(self):
+        self.r_shift = self.dec_factor(self.r_shift)
+
+    def dec_g_shift(self):
+        self.g_shift = self.dec_factor(self.g_shift)
+
+    def dec_b_shift(self):
+        self.b_shift = self.dec_factor(self.b_shift)
+
+    def dec_brightness(self):
+        self.brightness = self.dec_factor(self.brightness)
+
+
+def shift_elements(list, element):
     return (list + [element])[1:]
 
 
