@@ -1,15 +1,22 @@
 from lib import ws2801
 import Adafruit_WS2801
+import os
+import time
+import pickle
 import sys
 
 
-red = 255
-green = 187
-blue = 0
+original_red = 255
+original_green = 187
+original_blue = 100
+
+red = original_red
+green = original_green
+blue = original_blue
 
 step = 20
 
-settings_file = "rambilight/config/staticlight_settings.pickle"
+settings_file = "staticlight/config/staticlight_settings.pickle"
 
 def run_program():
     ws2801.init_pixels(200)
@@ -33,6 +40,7 @@ def set_leds():
         ws2801.pixels.set_pixel(led, color)
 
     ws2801.pixels.show()
+    time.sleep(0.1)
     ws2801.pixels.show()
 
 
@@ -47,6 +55,7 @@ def keybindings():
             'KEY_UP':    increase_blue,
             'KEY_DOWN':  decrease_blue,
             'KEY_OK':    increase_green,
+            'KEY_BACK':  reset_settings,
             'KEY_INFO':  decrease_green }
 
 def backup_and_set():
@@ -97,8 +106,7 @@ def name():
 
 def backup_settings():
     with open(settings_file, 'w+') as handle:
-        pickle.dump((red, blue, green),
-                    settings_file)
+        pickle.dump((red, blue, green), handle)
 
 def load_settings():
     if os.path.exists(settings_file):
@@ -106,3 +114,10 @@ def load_settings():
 	        return pickle.load(handle)
     else:
         return None
+
+def reset_settings():
+    global red, green, blue
+    red = original_red
+    green = original_green
+    blue = original_blue
+    backup_and_set()

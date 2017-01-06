@@ -17,8 +17,7 @@ from rambilight import program as rambilight_program
 from lib import ws2801
 
 logging.basicConfig(format='[%(levelname)s][%(module)s] %(message)s',
-                    level=logging.INFO, 
-                    filename='log.log')
+                    level=logging.INFO)
 
 
 # turn of the lights intitially ;)
