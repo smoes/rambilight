@@ -1,3 +1,10 @@
+"""
+Module to define the rambilight program.
+Contains run_program, stop_program, key_binding and name
+methods as a convention. For further details about programs
+in this project, check out the readme. 
+"""
+
 import os
 import time
 import logging
@@ -15,14 +22,18 @@ stream = None
 
 server_instance = None
 
-tv_res = (1920, 1080)
-led_width = 28
-led_height = 15
+tv_res = (1920, 1080) # TV Resolution for calibration images
+led_width = 28        # Number of horinzontal leds in rambilight
+led_height = 15       # Number of vertical leds in rambilight
 
 edge_file = "rambilight/config/edges.pickle"
 color_file = "rambilight/config/colors.pickle"
 
 def stop_program():
+    """
+    Stops the program, the imutils/picamera stream and
+    turns of the leds.
+    """
 
     global rambilight_instance
     global stream
@@ -32,12 +43,20 @@ def stop_program():
         rambilight_instance.stop()
         rambilight_instance = None
     time.sleep(0.5)
+
+    ws2801.pulse() # pulsing as feedback
+
     stream.stop()
     ws2801.turn_off()
     ws2801.turn_off()
 
 
 def run_program():
+    """
+    Runs the program. It therefore creates a new picamera
+    stream, loads existing configurations and starts the
+    rambilight thread.
+    """
 
     global rambilight_instance
     global stream
@@ -64,6 +83,10 @@ def run_program():
 
 
 def load_edges():
+    """
+    Loads edge configuration from file if exists. Returns a list
+    of edge points or None, if file could not be found.
+    """
     if os.path.exists(edge_file):
         logging.info("Loading existing edge configuration")
         return edge_calibration.load_edge_calibration(edge_file)
@@ -73,6 +96,10 @@ def load_edges():
 
 
 def keybindings():
+    """
+    Returns a list of remote keybindings as defined by
+    lirc and correlated actions.
+    """
     ri = rambilight_instance
     return {'KEY_STOP': calibrate_edges,
             'KEY_PLAY': calibrate_color,
@@ -87,7 +114,13 @@ def keybindings():
             'KEY_BACK': ri.reset_settings
     }
 
+
 def calibrate_edges():
+    """
+    Starts the edge calibration using chromecast.
+    If edge calibration fails the leds pulse red, the rambilight
+    is not unpaused and no edge configuration is written to file.
+    """
     rambilight_instance.pause()
     ws2801.pulse()
     global server_instance
@@ -98,10 +131,15 @@ def calibrate_edges():
     edges = edge_calibration.find_edges(stream, tv_res, led_width, led_height)
 
     if edges:
+        ws2801.pulse()
         edge_calibration.backup_edges(edges, edge_file)
         rambilight_instance.unpause()
 
+
 def calibrate_color():
+    """
+    Starts the color calibration using chromecast
+    """
     rambilight_instance.pause()
     ws2801.pulse()
     global server_instance
@@ -115,6 +153,7 @@ def calibrate_color():
         calib = color_calibration.calibrate(stream, edges, tv_res, led_width, led_height)
 
     if calib:
+        ws2801.pulse()
         color_calibration.backup_calibration(calib, color_file)
         rambilight_instance.unpause()
 

@@ -1,3 +1,10 @@
+"""
+Module used to calibrate the edges (or borders) of the TV. That is,
+finding the coordinates of the tv borders in camera image coordinates.
+
+Uses openCVs SimpleBlobDetector combined with an image served by chromecast.
+"""
+
 import sys
 sys.path.insert(1, "/usr/local/lib/python2.7/site-packages/")
 import cv2
@@ -19,6 +26,9 @@ border_left = 90
 
 
 def backup_edges(edges, f):
+    """
+    Writes list of edges to a given file f using pickle.
+    """
     logging.info("Writing edge backup to " + str(f))
     with open(f, 'w+') as handle:
        logging.info(str(edges))
@@ -26,11 +36,19 @@ def backup_edges(edges, f):
 
 
 def load_edge_calibration(f):
+    """
+    Loads an existing edge calibration from a file previously
+    stored using pickle.
+    """
     logging.info("Loading edge backup from " + str(f))
     with open(f, 'r') as handle:
     	return pickle.load(handle)
 
 def calibration_image(res, coords):
+    """
+    Creates and returns an image with a black background and white circles
+    at the given coordinates.
+    """
     height = res[1]
     width  = res[0]
     image = np.zeros((height,width,3), np.uint8)
@@ -44,6 +62,10 @@ def calibration_image(res, coords):
 
 
 def left_coords_fn(res, num_led_height):
+    """
+    Returns a list of coordinates for the white circle positions in
+    the calibration image, meant for calibrating the left border.
+    """
     height = res[1]
     width  = res[0]
     steps_height = (height - border_top * 2) / (num_led_height - 1)
@@ -51,6 +73,10 @@ def left_coords_fn(res, num_led_height):
 
 
 def right_coords_fn(res, num_led_height):
+    """
+    Returns a list of coordinates for the white circle positions in
+    the calibration image, meant for calibrating the right border.
+    """
     height = res[1]
     width  = res[0]
     steps_height = (height - border_top * 2) / (num_led_height - 1)
@@ -59,6 +85,10 @@ def right_coords_fn(res, num_led_height):
 
 
 def top_coords_fn(res, num_led_width):
+    """
+    Returns a list of coordinates for the white circle positions in
+    the calibration image, meant for calibrating the top border.
+    """
     height = res[1]
     width  = res[0]
     steps_width  = (width  - border_left * 2) / (num_led_width - 1)
@@ -66,7 +96,10 @@ def top_coords_fn(res, num_led_width):
 
 
 def bottom_coords_fn(res, num_led_width):
-
+    """
+    Returns a list of coordinates for the white circle positions in
+    the calibration image, meant for calibrating the bottom border.
+    """
     height = res[1]
     width  = res[0]
     steps_width  = (width  - border_left * 2) / (num_led_width - 1)
@@ -75,7 +108,11 @@ def bottom_coords_fn(res, num_led_width):
 
 
 def blob_detector():
-    # create a simple blob detector
+    """
+    Returns a SimpleBlobDetector feasible for finding white blobs
+    on a black background. Depending on the camera distance and so the
+    size of the screen in the camera image, minArea must be adjusted
+    """
     params = cv2.SimpleBlobDetector_Params()
     params.filterByArea = True
     params.minArea = 4
@@ -90,6 +127,7 @@ def blob_detector():
 
 
 def find_edges_one_side(vs, side, calib_image, order, detector):
+
     file_name = "calibration_" + side + ".jpg"
     file_path = server.build_file_path(file_name)
     logging.info("Writing " + side + "-calibration file to " + file_path)

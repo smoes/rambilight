@@ -1,5 +1,11 @@
 #!/usr/bin/env python
-#coding: utf8
+"""
+Module implementing the server managing the lirc commands
+for remote control.
+
+It contains the logic for programs and custom actions mapped to
+lirc keywords.
+"""
 
 import logging
 import sys
@@ -16,6 +22,7 @@ from rambilight import program as rambilight_program
 
 from lib import ws2801
 
+# set the logger
 logging.basicConfig(format='[%(levelname)s][%(module)s] %(message)s',
                     level=logging.INFO, 
                     filename='log.log')
@@ -30,6 +37,7 @@ sockid=lirc.init("ambilight-server", blocking = False)
 
 
 def power_action(current, programs):
+    """ Turn on and of the whole thing. """
     if current is not None:
         logging.info("Stopping " + current.name())
         current.stop_program()
@@ -40,6 +48,7 @@ def power_action(current, programs):
 
 
 def next_action(current, programs):
+    """ Switch between programs """
     if current is not None:
         current.stop_program()
         programs.rotate(-1)
@@ -48,12 +57,21 @@ def next_action(current, programs):
     return (programs[0], programs)
 
 def program_action(program, key):
+    """ Custom actions """
     if key in program.keybindings():
         program.keybindings()[key]()
 
 current = None
-programs = deque([ staticlight_program,rambilight_program])
+
+# List of all programs.
+# If a new program is implemented it must be added here.
+# The next_action function cycles through these programs
+# in the given order (because of this, deque)
+programs = deque([staticlight_program, rambilight_program])
+
 logging.info("Rambilight server started")
+
+# give some feedback
 ws2801.pulse()
 ws2801.pulse()
 

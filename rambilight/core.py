@@ -1,3 +1,10 @@
+"""
+Module containing the led ambilight logic.
+Although trying to program in a very functional manner,
+this module is iterative programming oriented, due to performance
+issues (e.g. function-call overhead in python.)
+"""
+
 import threading
 import time
 from lib import ws2801
@@ -14,10 +21,15 @@ settings_file = "rambilight/config/rambilight_settings.pickle"
 class RambilightDriver(threading.Thread):
 
     def __init__(self, threadID, coordinates_to_led, stream):
+
         threading.Thread.__init__(self)
         ws2801.init_pixels(86)
+
         self.threadID = threadID
         self.stopped = False
+
+        # if no coordinates are present there is no way to
+        # run rambilight, so pause it.
         if coordinates_to_led:
             self.paused = False
             self.coordinates_to_led = sorted(coordinates_to_led, key=lambda t: t[1])
@@ -26,10 +38,16 @@ class RambilightDriver(threading.Thread):
             self.coordinates_to_led = []
         self.stream = stream
 
+        # Shift values, to apply color correction to the value
+        # that is passed to the leds.
+        # Original shift is maintained to offer reset functionality.
+        # Adapt these values to your own led stripe for having a
+        # decent color experience. 
         self.original_r_shift = 0.85
         self.original_b_shift = 0.63
         self.original_g_shift = 0.95
 
+        # load existing shifts or use original
         loaded = self.load_settings
         if loaded is not None:
             (r,g,b,brightness) = loaded
@@ -46,9 +64,35 @@ class RambilightDriver(threading.Thread):
 
     def run(self):
 
+        """The rambilight algorithm is optimized to be fast but also offer a smooth
+        experience. Some mechanics are implemented to due technical issues
+        (e.g. bright spikes in picamera pictures.). If you do not have them u may
+        adapt the algorithm.
+
+        There are three concepts to guarantee a smooth experience:
+
+        * The algorithm is based on shift-registers containing the last n values for each
+        coordinate the colors are measured for. The colors in this register are averaged
+        for cleaner experience. To prevent the mentioned bright spikes in the stream
+        that let the LEDs flicker, `num_outliers` outliers are ignored (biggest distance to
+        previous color).
+
+        * Actual color values are transitioned over time. This means, that a color needs
+        `fade_levels` steps to actually be displayed. This mechanism makes the light-switching
+        in fast changing scenes less noisy.
+
+        * The image is blurred in spots where the colors are measured in. The blurring
+        is limited to these spots. This increases the performance drastically.
+        Blurring averts very small changes in color due to camera noise, that result in
+        distracting background noise.
+
+        The algorithm runs with 30-40 fps on a raspberry pi rev. 3.
+        """
+
         shift_register_length = 5
-        num_aberration = 2
+        num_outliers = 2
         fade_levels = 2
+
         blur_area = 8
         blur_strength = 12
 
@@ -57,6 +101,7 @@ class RambilightDriver(threading.Thread):
 
         while True:
 
+            # check stopped/paused conditions before starting
             if self.stopped: break
             if self.paused:
                 time.sleep(1)
@@ -64,9 +109,9 @@ class RambilightDriver(threading.Thread):
 
             frame = self.stream.read()
 
-            # this could be a map over former_pixels
             for (coord, led_num) in self.coordinates_to_led:
 
+                # find the area that must be blurred and blur it.
                 x_min = max(coord[1] - blur_area, 0)
                 x_max = coord[1] + blur_area
                 y_min = max(coord[0] - blur_area, 0)
@@ -74,31 +119,45 @@ class RambilightDriver(threading.Thread):
                 region = frame[x_min:x_max, y_min:y_max]
                 sub_pixel = cv2.blur(region, (blur_strength,blur_strength))
 
+                # extract pixel needed
                 pixel = sub_pixel[blur_area][blur_area]
                 r = int(pixel[2])
                 g = int(pixel[1])
                 b = int(pixel[0])
 
-
+                # extract former pixel
                 former_r, former_g, former_b = former_pixels[led_num]
 
+                # push the new value into the shift register and find the average
                 new_register = shift_elements(registers[led_num], (r,g,b)) 
-                smoothed_r, smoothed_g, smoothed_b = average_without_aberration(new_register, num_aberration, (former_r, former_g, former_b))
+                smoothed_r, smoothed_g, smoothed_b = average_without_outliers(new_register, num_outliers, (former_r, former_g, former_b))
 
+                # calculate the step in respect of the number of fade_levels
                 step_r = (smoothed_r - former_r) / fade_levels
                 step_g = (smoothed_g - former_g) / fade_levels
                 step_b = (smoothed_b - former_b) / fade_levels
 
-                new_r = step_r + former_r
-                new_g = step_g + former_g
-                new_b = step_b + former_b
+                # we need to handle small values that are decreasing very slow
+                # because of the fade-level devision we defined earlier. As soon
+                # as we see a low value decreasing, we set it to 0
+                # Otherwise we have looong slightly glowing leds when screen goes to
+                # black.
+                if (r + b + g < 10) and ((r+b+g) < (former_r + former_b + former_g)):
+                    new_r = 0
+                    new_g = 0
+                    new_b = 0
+                else:
+                    new_r = step_r + former_r
+                    new_g = step_g + former_g
+                    new_b = step_b + former_b
 
 
-                # this actually takes RBG?!
+                # shift the values according to the shift parameters.
                 shifted_r, shifted_b, shifted_g = shift_color((new_r, new_b, new_g), (r_shift, b_shift, g_shift))
                 output = Adafruit_WS2801.RGB_to_color(shifted_r, shifted_b, shifted_g)
                 ws2801.pixels.set_pixel(led_num, output)
 
+                # finally set the former pixel and update the register
                 former_pixels[led_num] = (new_r, new_g, new_b)
                 registers[led_num] = new_register
 
@@ -173,17 +232,28 @@ class RambilightDriver(threading.Thread):
         self.brightness = 1.0
 
 
+
+# Functions not accessing class members:
+
 def shift_elements(list, element):
+    """
+    Shifts a new `element` in to the register `list` and returns a new register
+    """
     return (list + [element])[1:]
 
 
-def average_without_aberration(colors, num_aberration, old_color):
-    assert (num_aberration > 0)
+def average_without_outliers(colors, num_outliers, reference_color):
+    """
+    Averages colors without taking outliers into account.
+    outliers are the colors with the biggest difference to some `reference_color`
+    The number of ignored outliers can be specified by `num_outliers`.
+    The function returns an averaged color.
+    """
+    assert (num_outliers > 0)
 
-    average_color = old_color
     deltas = []
     for color in colors:
-        a = average_color
+        a = reference_color
         b = color
         subtr = (a[0] - b[0], a[1] - b[1], a[2] - b[2])
         absv = (abs(subtr[0]), abs(subtr[1]), abs(subtr[2]))
@@ -191,7 +261,7 @@ def average_without_aberration(colors, num_aberration, old_color):
         deltas.append((sum, b))
 
     sort   = sorted(deltas, key=lambda tuple: tuple[0])
-    bestn  = map(lambda tuple : tuple[1], sort)[:(-1 * num_aberration)]
+    bestn  = map(lambda tuple : tuple[1], sort)[:(-1 * num_outliers)]
 
     sum = (0,0,0)
     for color in bestn:
@@ -202,7 +272,12 @@ def average_without_aberration(colors, num_aberration, old_color):
 
 
 def s(i):
+    """Returns 1 if `i` is greate then 0 -1 else"""
     return 1 if (i > 0) else -1
 
 def shift_color(color, coeff):
+    """Expects a three tuple color and a three tuple of coefficients.
+    Multiplies each entry in color with a coefficient at the same index
+    respectively.
+    """
     return tuple(map(lambda x: int(x[0] * x[1]), zip(color, coeff)))
