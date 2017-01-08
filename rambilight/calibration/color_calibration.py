@@ -19,7 +19,7 @@ def decent_constant_calibration(camera):
     camera.awb_mode = 'off'
     camera.exposure_mode = 'off'
     camera.awb_gains = (Fraction(53, 32), Fraction(9, 8))
-    camera.shutter_speed = 15900
+    camera.shutter_speed = 20000
 
 def backup_calibration(calib, f):
     logging.info("Writing color backup to " + str(f))
@@ -37,7 +37,7 @@ def load_calibration_helper(params, stream):
     (gains, shutter) = params
     camera.awb_mode = 'off'
     camera.exposure_mode = 'off'
-    camera.iso = 800
+    camera.iso = 1600
     camera.awb_gains = gains
     camera.shutter_speed = shutter
 
@@ -74,7 +74,7 @@ def calibrate_shutterspeed_helper(stream, references, best, current, max):
         img = stream.read()
         rating = rate_image(img, references)
         if rating < best_rating:
-            best = (current, rating)
+            best = (current + 2000, rating)
         return calibrate_shutterspeed_helper(stream, references, best, current + 100, max)
     else:
         return best
@@ -92,8 +92,8 @@ def calibrate_color(stream):
     camera = stream.camera
     camera.awb_mode='auto'
     camera.exposure_mode='auto'
-    camera.iso = 800
-    time.sleep(5)
+    camera.iso = 1600
+    time.sleep(8)
     gains = stream.camera.awb_gains
     camera.awb_mode='off'
     camera.awb_gains = gains

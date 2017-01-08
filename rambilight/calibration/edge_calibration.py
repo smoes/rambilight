@@ -141,7 +141,6 @@ def find_edges_one_side(vs, side, calib_image, order, detector):
         time.sleep(7)
 
     img = vs.read()
-    cv2.imwrite(side + ".jpg", img)
     #img = cv2.fastNlMeansDenoisingColored(img,None,10,10,7,21)
     keypoints = detector.detect(img)
 

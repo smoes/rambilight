@@ -7,6 +7,7 @@ in this project, check out the readme.
 
 import os
 import time
+import sys
 import logging
 
 from rambilight.calibration import edge_calibration
@@ -16,6 +17,10 @@ from imutils.video.pivideostream import PiVideoStream
 from lib import ws2801
 from lib import server
 import imutils
+
+sys.path.insert(1, "/usr/local/lib/python2.7/site-packages/")
+import cv2
+
 
 rambilight_instance = None
 stream = None
@@ -111,7 +116,8 @@ def keybindings():
             'KEY_INFO': ri.dec_g_shift,
             'KEY_MODE': ri.dec_brightness,
             'KEY_SUBTITLE': ri.inc_brightness,
-            'KEY_BACK': ri.reset_settings
+            'KEY_BACK': ri.reset_settings,
+            'KEY_AUDIO': screenshot
     }
 
 
@@ -121,9 +127,10 @@ def calibrate_edges():
     If edge calibration fails the leds pulse red, the rambilight
     is not unpaused and no edge configuration is written to file.
     """
+    global server_instance
+
     rambilight_instance.pause()
     ws2801.pulse()
-    global server_instance
 
     if server_instance is None:
         server_instance = server.init_simple_http()
@@ -157,6 +164,16 @@ def calibrate_color():
         color_calibration.backup_calibration(calib, color_file)
         rambilight_instance.unpause()
 
+def screenshot():
+    global server_instance
+
+    logging.info("Making screenshot.")
+    if server_instance is None:
+        logging.info("Starting webserver to serve image file under " + str(server.IP))
+        server_instance = server.init_simple_http()
+
+    img = rambilight_instance.stream.read()
+    cv2.imwrite(server.build_file_path("screenshot.jpg"), img)
 
 def name():
     return "rambilight"

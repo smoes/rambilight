@@ -48,7 +48,8 @@ class RambilightDriver(threading.Thread):
         self.original_g_shift = 0.95
 
         # load existing shifts or use original
-        loaded = self.load_settings
+        loaded = self.load_settings()
+
         if loaded is not None:
             (r,g,b,brightness) = loaded
             self.r_shift = r
@@ -90,8 +91,9 @@ class RambilightDriver(threading.Thread):
         """
 
         shift_register_length = 5
+
         num_outliers = 2
-        fade_levels = 2
+        fade_levels = 3
 
         blur_area = 8
         blur_strength = 12
@@ -152,9 +154,13 @@ class RambilightDriver(threading.Thread):
                     new_b = step_b + former_b
 
 
-                # shift the values according to the shift parameters.
-                shifted_r, shifted_b, shifted_g = shift_color((new_r, new_b, new_g), (r_shift, b_shift, g_shift))
-                output = Adafruit_WS2801.RGB_to_color(shifted_r, shifted_b, shifted_g)
+                shifted_r, shifted_b, shifted_g = shift_color((new_r, new_b, new_g), 
+                                                              (self.r_shift, self.b_shift, self.g_shift))
+                bn = self.brightness
+                output = Adafruit_WS2801.RGB_to_color(int(shifted_r * bn),  
+                                                      int(shifted_b * bn),  
+                                                      int(shifted_g * bn))
+
                 ws2801.pixels.set_pixel(led_num, output)
 
                 # finally set the former pixel and update the register
@@ -177,7 +183,7 @@ class RambilightDriver(threading.Thread):
         self.paused = False
 
     def inc_factor(self, val):
-        return min(val + 0.1, 0.5)
+        return min(val + 0.02, 1.0)
 
     def inc_r_shift(self):
         self.r_shift = self.inc_factor(self.r_shift)
@@ -196,7 +202,7 @@ class RambilightDriver(threading.Thread):
         self.backup_settings()
 
     def dec_factor(self, val):
-        return max(0.0, val - 0.5)
+        return max(0.0, val - 0.02)
 
     def dec_r_shift(self):
         self.r_shift = self.dec_factor(self.r_shift)
@@ -216,8 +222,7 @@ class RambilightDriver(threading.Thread):
 
     def backup_settings(self):
         with open(settings_file, 'w+') as handle:
-            pickle.dump((self.r_shift, self.g_shift, self.b_shift, self.brightness),
-                        settings_file)
+            pickle.dump((self.r_shift, self.g_shift, self.b_shift, self.brightness), handle)
 
     def load_settings(self):
         if os.path.exists(settings_file):
@@ -230,6 +235,7 @@ class RambilightDriver(threading.Thread):
         self.g_shift = self.original_g_shift
         self.r_shift = self.original_r_shift
         self.brightness = 1.0
+        self.backup_settings()
 
 
 
