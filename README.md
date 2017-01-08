@@ -9,3 +9,5 @@ Rambilight has the following features:
 3. Offers auto detection of TV edges in the camera picture using openCV and chromecast.
 4. Is comfortably controlable using a remote and lirc.
 5. Is easily enhanceable using a simple program semantic (see staticlight/core.py)
+
+Documentation tbc...
