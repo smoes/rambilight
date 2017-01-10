@@ -9,6 +9,7 @@ import threading
 import time
 from lib import ws2801
 import Adafruit_WS2801
+import colorsys
 import numpy as np
 import pickle
 import os
@@ -132,34 +133,29 @@ class RambilightDriver(threading.Thread):
 
                 # push the new value into the shift register and find the average
                 new_register = shift_elements(registers[led_num], (r,g,b)) 
-                smoothed_r, smoothed_g, smoothed_b = average_without_outliers(new_register, num_outliers, (former_r, former_g, former_b))
+                smoothed_r, smoothed_g, smoothed_b = average_without_outliers(new_register,
+                                                                              num_outliers,
+                                                                              (former_r, former_g, former_b))
 
                 # calculate the step in respect of the number of fade_levels
                 step_r = (smoothed_r - former_r) / fade_levels
                 step_g = (smoothed_g - former_g) / fade_levels
                 step_b = (smoothed_b - former_b) / fade_levels
 
-                # we need to handle small values that are decreasing very slow
-                # because of the fade-level devision we defined earlier. As soon
-                # as we see a low value decreasing, we set it to 0
-                # Otherwise we have looong slightly glowing leds when screen goes to
-                # black.
-                if (r + b + g < 10) and ((r+b+g) < (former_r + former_b + former_g)):
-                    new_r = 0
-                    new_g = 0
-                    new_b = 0
-                else:
-                    new_r = step_r + former_r
-                    new_g = step_g + former_g
-                    new_b = step_b + former_b
+
+                new_r = step_r + former_r
+                new_g = step_g + former_g
+                new_b = step_b + former_b
 
 
-                shifted_r, shifted_b, shifted_g = shift_color((new_r, new_b, new_g), 
+                shifted_r, shifted_b, shifted_g = shift_color((new_r, new_b, new_g),
                                                               (self.r_shift, self.b_shift, self.g_shift))
-                bn = self.brightness
-                output = Adafruit_WS2801.RGB_to_color(int(shifted_r * bn),  
-                                                      int(shifted_b * bn),  
-                                                      int(shifted_g * bn))
+
+                (hue, lightness, saturation) = colorsys.rgb_to_hls(new_r, new_b, new_g)
+                desat = (hue, int(lightness * self.brightness), int(0.7 * saturation))
+                (final_r, final_g, final_b) = colorsys.hls_to_rgb(desat)
+
+                output = Adafruit_WS2801.RGB_to_color(final_r, final_g, final_b)
 
                 ws2801.pixels.set_pixel(led_num, output)
 
