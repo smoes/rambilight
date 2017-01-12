@@ -5,6 +5,7 @@ this module is iterative programming oriented, due to performance
 issues (e.g. function-call overhead in python.)
 """
 
+from __future__ import division
 import threading
 import time
 from lib import ws2801
@@ -93,11 +94,11 @@ class RambilightDriver(threading.Thread):
 
         shift_register_length = 5
 
-        num_outliers = 2
-        fade_levels = 3
+        num_outliers = 3
+        fade_levels = 5
 
-        blur_area = 8
-        blur_strength = 12
+        blur_area = 5
+        blur_strength = 7
 
         registers = [[(255,255,255)] * shift_register_length] * len(self.coordinates_to_led)
         former_pixels = [(255,255,255)] * len(self.coordinates_to_led)
@@ -148,14 +149,17 @@ class RambilightDriver(threading.Thread):
                 new_b = step_b + former_b
 
 
-                shifted_r, shifted_b, shifted_g = shift_color((new_r, new_b, new_g),
-                                                              (self.r_shift, self.b_shift, self.g_shift))
 
-                (hue, lightness, saturation) = colorsys.rgb_to_hls(new_r, new_b, new_g)
-                desat = (hue, int(lightness * self.brightness), int(0.7 * saturation))
-                (final_r, final_g, final_b) = colorsys.hls_to_rgb(desat)
+                (hue, lightness, saturation) = convert_rgb_to_hls(new_r, new_g, new_b)
+                new_hue = int(((100.0-(saturation * 0.15))/100.0) * saturation)
+                (dh, dl, ds) = (hue, int(lightness * self.brightness), new_hue)
+                (d_r, d_g, d_b) = convert_hls_to_rgb(dh,dl,ds)
 
-                output = Adafruit_WS2801.RGB_to_color(final_r, final_g, final_b)
+
+                shifted_r, shifted_b, shifted_g = shift_color((d_r, d_g, d_b),
+                                                              (self.r_shift, self.g_shift, self.b_shift))
+
+                output = Adafruit_WS2801.RGB_to_color(shifted_r, shifted_g, shifted_b)
 
                 ws2801.pixels.set_pixel(led_num, output)
 
@@ -283,3 +287,11 @@ def shift_color(color, coeff):
     respectively.
     """
     return tuple(map(lambda x: int(x[0] * x[1]), zip(color, coeff)))
+
+def convert_rgb_to_hls(r, g, b):
+    h, l, s = colorsys.rgb_to_hls(r/255, g/255, b/255)
+    return ( int(round(h * 360)), int(round(l * 100)) , int(round(s * 100)))
+
+def convert_hls_to_rgb(h, l, s):
+    r, g, b = colorsys.hls_to_rgb(h/360, l/100, s/100)
+    return (int(round(r * 255)) ,int(round(g * 255)), int(round(b * 255)))
