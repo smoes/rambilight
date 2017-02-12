@@ -92,13 +92,13 @@ class RambilightDriver(threading.Thread):
         The algorithm runs with 30-40 fps on a raspberry pi rev. 3.
         """
 
-        shift_register_length = 5
+        shift_register_length = 6
 
         num_outliers = 3
         fade_levels = 5
 
-        blur_area = 5
-        blur_strength = 7
+        blur_area = 10
+        blur_strength = 12
 
         registers = [[(255,255,255)] * shift_register_length] * len(self.coordinates_to_led)
         former_pixels = [(255,255,255)] * len(self.coordinates_to_led)
@@ -121,16 +121,20 @@ class RambilightDriver(threading.Thread):
                 y_min = max(coord[0] - blur_area, 0)
                 y_max = coord[0] + blur_area
                 region = frame[x_min:x_max, y_min:y_max]
-                sub_pixel = cv2.blur(region, (blur_strength,blur_strength))
+                blurred_region = cv2.blur(region, (blur_strength,blur_strength))
 
                 # extract pixel needed
-                pixel = sub_pixel[blur_area][blur_area]
+                pixel = blurred_region[blur_area][blur_area]
                 r = int(pixel[2])
                 g = int(pixel[1])
                 b = int(pixel[0])
+               
 
                 # extract former pixel
                 former_r, former_g, former_b = former_pixels[led_num]
+
+                if r < 25 and b < 25 and g < 25 and r+b+g < 65:
+                    r,g,b = (0,0,0)
 
                 # push the new value into the shift register and find the average
                 new_register = shift_elements(registers[led_num], (r,g,b)) 
@@ -149,11 +153,14 @@ class RambilightDriver(threading.Thread):
                 new_b = step_b + former_b
 
 
+                # do the hls conversion, desaturation and brightness adjustments
 
-                (hue, lightness, saturation) = convert_rgb_to_hls(new_r, new_g, new_b)
+                h, l, s = colorsys.rgb_to_hls(new_r/255, new_g/255, new_b/255)
+                (hue, lightness, saturation) =( int(round(h * 360)), int(round(l * 100)) , int(round(s * 100)))
                 new_hue = int(((100.0-(saturation * 0.15))/100.0) * saturation)
                 (dh, dl, ds) = (hue, int(lightness * self.brightness), new_hue)
-                (d_r, d_g, d_b) = convert_hls_to_rgb(dh,dl,ds)
+                r, g, b = colorsys.hls_to_rgb(dh/360, dl/100, ds/100)
+                d_r, d_g, d_b = (int(round(r * 255)) ,int(round(g * 255)), int(round(b * 255)))
 
 
                 shifted_r, shifted_b, shifted_g = shift_color((d_r, d_g, d_b),
@@ -166,9 +173,10 @@ class RambilightDriver(threading.Thread):
                 # finally set the former pixel and update the register
                 former_pixels[led_num] = (new_r, new_g, new_b)
                 registers[led_num] = new_register
-
+                   
 
             ws2801.pixels.show()
+
 
     def stop(self):
         self.stopped = True
