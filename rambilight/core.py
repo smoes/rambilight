@@ -92,13 +92,13 @@ class RambilightDriver(threading.Thread):
         The algorithm runs with 30-40 fps on a raspberry pi rev. 3.
         """
 
-        shift_register_length = 6
+        shift_register_length = 5
 
         num_outliers = 3
         fade_levels = 5
 
-        blur_area = 10
-        blur_strength = 12
+        blur_area = 7
+        blur_strength = 10
 
         registers = [[(255,255,255)] * shift_register_length] * len(self.coordinates_to_led)
         former_pixels = [(255,255,255)] * len(self.coordinates_to_led)
@@ -133,7 +133,7 @@ class RambilightDriver(threading.Thread):
                 # extract former pixel
                 former_r, former_g, former_b = former_pixels[led_num]
 
-                if r < 25 and b < 25 and g < 25 and r+b+g < 65:
+                if r < 22 and b < 22 and g < 22 and r+b+g < 55:
                     r,g,b = (0,0,0)
 
                 # push the new value into the shift register and find the average
