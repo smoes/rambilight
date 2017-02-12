@@ -7,7 +7,7 @@ cast = None
 def get_chromecast():
     global cast
     if not cast:
-        chromecasts = [cc.device.friendly_name for cc in pychromecast.get_chromecasts()]
+        chromecasts = pychromecast.get_chromecasts()
         if len(chromecasts) == 0:
             logging.error("No chromecast found!")
             return None
