@@ -9,6 +9,7 @@ import sys
 sys.path.insert(1, "/usr/local/lib/python2.7/site-packages/")
 import cv2
 import imutils
+import color_calibration
 import time
 import io
 import os.path
@@ -21,8 +22,8 @@ from lib import server
 from lib import chromecast
 
 
-border_top = 160
-border_left = 160
+border_top = 120
+border_left = 120
 
 
 def backup_edges(edges, f):
@@ -53,7 +54,7 @@ def calibration_image(res, coords):
     width  = res[0]
     image = np.zeros((height,width,3), np.uint8)
 
-    circle_radius = 15
+    circle_radius = 17
 
     for coord in coords:
         cv2.circle(image, coord, circle_radius, (255,255,255), -1)
@@ -121,7 +122,7 @@ def blob_detector():
     params.filterByCircularity = False
     params.filterByInertia = False
     params.filterByConvexity = 1
-    params.minConvexity = 0.7
+    params.minConvexity = 0.5
 
     return cv2.SimpleBlobDetector_create(params)
 
@@ -132,7 +133,7 @@ def find_edges_one_side(vs, side, calib_image, order, detector):
     file_path = server.build_file_path(file_name)
     logging.info("Writing " + side + "-calibration file to " + file_path)
     cv2.imwrite(server.build_file_path(file_name), calib_image)
-    time.sleep(0.5)
+    time.sleep(1.0)
 
     cast = chromecast.get_chromecast()
     if cast:
@@ -145,6 +146,8 @@ def find_edges_one_side(vs, side, calib_image, order, detector):
     keypoints = detector.detect(img)
 
     coords = map(lambda kp: (int(kp.pt[0]), int(kp.pt[1])), keypoints)
+    cast.quit_app()
+    cast.wait()
     return order(coords)
 
 
@@ -152,6 +155,7 @@ def find_edges_one_side(vs, side, calib_image, order, detector):
 def find_edges(vs, res, num_led_width, num_led_height):
 
     detector = blob_detector()
+
 
     left_fn     = lambda points : (sorted(points, key=lambda p : p[1])[::-1])
     left_coords = left_coords_fn(res, num_led_height)
@@ -188,11 +192,17 @@ def find_edges(vs, res, num_led_width, num_led_height):
     cv2.imwrite(server.build_file_path(calib_fname), img)
 
     cast = chromecast.get_chromecast()
+    cast.quit_app()
+    cast.wait()
+    time.sleep(1)
+
+
     if cast:
         chromecast.show_on_chromecast(server.build_url(calib_fname), cast);
         time.sleep(10)
-
         cast.quit_app()
+        cast.wait()
+
 
     for (t, e, n) in [("left",  left_edges,  num_led_height), 
                    ("right", right_edges, num_led_height),
@@ -208,6 +218,7 @@ def find_edges(vs, res, num_led_width, num_led_height):
     reverse = map(lambda enumerated: (enumerated[1], enumerated[0]), with_led_num)
     ws2801.pulse()
     ws2801.pulse()
+
     return reverse
 
 
