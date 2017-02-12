@@ -132,6 +132,12 @@ def calibrate_edges():
     rambilight_instance.pause()
     ws2801.pulse()
 
+    stream.camera.awb_mode = 'auto'
+    stream.camera.exposure_mode = 'auto'
+    stream.camera.iso = 400
+    stream.camera.shutter_speed = 0
+    time.sleep(3)
+
     if server_instance is None:
         server_instance = server.init_simple_http()
 
@@ -139,6 +145,7 @@ def calibrate_edges():
 
     if edges:
         ws2801.pulse()
+        color_calibration.load_calibration(color_file, stream)
         edge_calibration.backup_edges(edges, edge_file)
         rambilight_instance.unpause()
 
