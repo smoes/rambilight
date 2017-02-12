@@ -164,6 +164,7 @@ def calibrate_color():
         color_calibration.backup_calibration(calib, color_file)
         rambilight_instance.unpause()
 
+
 def screenshot():
     global server_instance
 
@@ -172,8 +173,22 @@ def screenshot():
         logging.info("Starting webserver to serve image file under " + str(server.IP))
         server_instance = server.init_simple_http()
 
+    edges = load_edges()
+
     img = rambilight_instance.stream.read()
+    blurred = cv2.blur(img, (15,15))
+    gausian_blurred = cv2.GaussianBlur(img, (13,13), 0)
+    gausian_blurred_small = cv2.GaussianBlur(img, (5,5), 0)
+
+    for blob in edges:
+	blob_coords = (int(blob[0][0]), int(blob[0][1]))
+        cv2.circle(img, blob_coords, 3, (255,0,0), -1)
+
     cv2.imwrite(server.build_file_path("screenshot.jpg"), img)
+    cv2.imwrite(server.build_file_path("screenshot_blurred.jpg"), blurred)
+    cv2.imwrite(server.build_file_path("screenshot_gaussian_blurred.jpg"), gausian_blurred)
+    cv2.imwrite(server.build_file_path("screenshot_gaussian_blurred_small.jpg"), gausian_blurred_small)
+
 
 def name():
     return "rambilight"
