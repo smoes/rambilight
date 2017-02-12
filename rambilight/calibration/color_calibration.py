@@ -39,7 +39,7 @@ def load_calibration_helper(params, stream):
     camera.exposure_mode = 'off'
     camera.iso = 1600
     camera.awb_gains = gains
-    camera.shutter_speed = shutter
+    camera.shutter_speed = shutter - 3000
 
 def score(ccr, img):
     # some number magic
@@ -74,7 +74,7 @@ def calibrate_shutterspeed_helper(stream, references, best, current, max):
         img = stream.read()
         rating = rate_image(img, references)
         if rating < best_rating:
-            best = (current + 2000, rating)
+            best = (current - 2000, rating)
         return calibrate_shutterspeed_helper(stream, references, best, current + 100, max)
     else:
         return best
