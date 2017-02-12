@@ -21,8 +21,8 @@ from lib import server
 from lib import chromecast
 
 
-border_top = 90
-border_left = 90
+border_top = 160
+border_left = 160
 
 
 def backup_edges(edges, f):
@@ -115,7 +115,7 @@ def blob_detector():
     """
     params = cv2.SimpleBlobDetector_Params()
     params.filterByArea = True
-    params.minArea = 4
+    params.minArea = 3
     params.filterByColor = 1
     params.blobColor = 255
     params.filterByCircularity = False
