@@ -115,6 +115,7 @@ class RambilightDriver(threading.Thread):
 
         while True:
 
+            start_time = time.time()
             # check stopped/paused conditions before starting
             if self.stopped: break
             if self.paused:
@@ -190,16 +191,17 @@ class RambilightDriver(threading.Thread):
                 output = Adafruit_WS2801.RGB_to_color(shifted_r if shifted_r < ws else ws,  
                                                       shifted_g if shifted_g < ws else ws,
                                                       shifted_b if shifted_b < ws else ws)
-                                                      
 
                 ws2801.pixels.set_pixel(led_num, output)
 
                 # finally set the former pixel and update the register
                 former_pixels[led_num] = (new_r, new_g, new_b)
                 registers[led_num] = new_register
-                   
 
             ws2801.pixels.show()
+            end_time = time.time()
+            print("Elapsed time was %g seconds" % (end_time - start_time))
+
 
 
     def stop(self):
