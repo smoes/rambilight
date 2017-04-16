@@ -37,9 +37,9 @@ def load_calibration_helper(params, stream):
     (gains, shutter) = params
     camera.awb_mode = 'off'
     camera.exposure_mode = 'off'
-    camera.iso = 1600
+    camera.iso = 400
     camera.awb_gains = gains
-    camera.shutter_speed = shutter - 1000
+    camera.shutter_speed = shutter + 8000
 
 def score(ccr, img):
     # some number magic
@@ -84,7 +84,7 @@ def calibrate_shutterspeed(stream, references):
     logging.info("Searching for best shutter-speed. This can take a while.")
     best = calibrate_shutterspeed_helper(stream, references, (-1, 99999999), 8000, 16000)
     stream.camera.shutter_speed = best[0]
-    return best[0] - 1000
+    return best[0] 
 
 
 def calibrate_color(stream):
@@ -92,7 +92,7 @@ def calibrate_color(stream):
     camera = stream.camera
     camera.awb_mode='auto'
     camera.exposure_mode='auto'
-    camera.iso = 1600
+    camera.iso = 400
     time.sleep(8)
     gains = stream.camera.awb_gains
     camera.awb_mode='off'

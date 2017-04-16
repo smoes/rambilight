@@ -17,6 +17,7 @@ import os
 import sys
 sys.path.insert(1, "/usr/local/lib/python2.7/site-packages/")
 import cv2
+import logging
 
 settings_file = "rambilight/config/rambilight_settings.pickle"
 
@@ -35,6 +36,8 @@ class RambilightDriver(threading.Thread):
         if coordinates_to_led:
             self.paused = False
             self.coordinates_to_led = sorted(coordinates_to_led, key=lambda t: t[1])
+            self.coordinates_to_led = [x for x in self.coordinates_to_led if x[1] > 80 or x[1] < 64]
+            self.real_led_num = len(coordinates_to_led)
         else:
             self.paused = True
             self.coordinates_to_led = []
@@ -45,9 +48,9 @@ class RambilightDriver(threading.Thread):
         # Original shift is maintained to offer reset functionality.
         # Adapt these values to your own led stripe for having a
         # decent color experience. 
-        self.original_r_shift = 0.85
-        self.original_b_shift = 0.63
-        self.original_g_shift = 0.95
+        self.original_r_shift = 0.73
+        self.original_b_shift = 0.53
+        self.original_g_shift = 0.65
 
         # load existing shifts or use original
         loaded = self.load_settings()
@@ -83,6 +86,9 @@ class RambilightDriver(threading.Thread):
         * Actual color values are transitioned over time. This means, that a color needs
         `fade_levels` steps to actually be displayed. This mechanism makes the light-switching
         in fast changing scenes less noisy.
+ 
+        * Noise in the meaning of flickering (change delta sign rapidely) is punished by 
+        tracking it. If the penalty is too high, only the former pixel is rendered.
 
         * The image is blurred in spots where the colors are measured in. The blurring
         is limited to these spots. This increases the performance drastically.
@@ -92,16 +98,20 @@ class RambilightDriver(threading.Thread):
         The algorithm runs with 30-40 fps on a raspberry pi rev. 3.
         """
 
-        shift_register_length = 5
+        shift_register_length = 8
 
-        num_outliers = 3
-        fade_levels = 5
+        num_outliers = 4
+        fade_levels = 9
 
-        blur_area = 7
+        blur_area = 6
         blur_strength = 10
 
-        registers = [[(255,255,255)] * shift_register_length] * len(self.coordinates_to_led)
-        former_pixels = [(255,255,255)] * len(self.coordinates_to_led)
+        max_denoise_penalty = 20
+        denoise_penalty_threshold = 3
+        denoise_machine = [(0,0,(255,255,255))] * self.real_led_num
+
+        registers = [[(255,255,255)] * shift_register_length] * self.real_led_num
+        former_pixels = [(255,255,255)] * self.real_led_num
 
         while True:
 
@@ -136,6 +146,14 @@ class RambilightDriver(threading.Thread):
                 if r < 22 and b < 22 and g < 22 and r+b+g < 55:
                     r,g,b = (0,0,0)
 
+                # denoising
+                (former_penalty_state, former_delta, (dr, dg, db)) = denoise_machine[led_num]
+                delta = sign((r + g + b) - (former_r + former_g + former_b))
+                penalty = former_delta != delta
+                penalty_state = former_penalty_state + 5 if penalty else former_penalty_state - 1
+                render_change = penalty_state < denoise_penalty_threshold
+
+                
                 # push the new value into the shift register and find the average
                 new_register = shift_elements(registers[led_num], (r,g,b)) 
                 smoothed_r, smoothed_g, smoothed_b = average_without_outliers(new_register,
@@ -147,18 +165,19 @@ class RambilightDriver(threading.Thread):
                 step_g = (smoothed_g - former_g) / fade_levels
                 step_b = (smoothed_b - former_b) / fade_levels
 
-
                 new_r = step_r + former_r
                 new_g = step_g + former_g
                 new_b = step_b + former_b
 
+                (new_dr, new_dg, new_db) = (new_r, new_g, new_b) if render_change else (dr,dg,db)
+                denoise_machine[led_num] = (min(max_denoise_penalty, penalty_state), delta, (new_dr, new_dg, new_db))
 
                 # do the hls conversion, desaturation and brightness adjustments
 
-                h, l, s = colorsys.rgb_to_hls(new_r/255, new_g/255, new_b/255)
+                h, l, s = colorsys.rgb_to_hls(new_dr/255, new_dg/255, new_db/255)
                 (hue, lightness, saturation) =( int(round(h * 360)), int(round(l * 100)) , int(round(s * 100)))
-                new_hue = int(((100.0-(saturation * 0.15))/100.0) * saturation)
-                (dh, dl, ds) = (hue, int(lightness * self.brightness), new_hue)
+                new_sat = int(((100.0-(saturation * 0.45))/100.0) * saturation)
+                (dh, dl, ds) = (hue, int(lightness * self.brightness), new_sat)
                 r, g, b = colorsys.hls_to_rgb(dh/360, dl/100, ds/100)
                 d_r, d_g, d_b = (int(round(r * 255)) ,int(round(g * 255)), int(round(b * 255)))
 
@@ -166,7 +185,12 @@ class RambilightDriver(threading.Thread):
                 shifted_r, shifted_b, shifted_g = shift_color((d_r, d_g, d_b),
                                                               (self.r_shift, self.g_shift, self.b_shift))
 
-                output = Adafruit_WS2801.RGB_to_color(shifted_r, shifted_g, shifted_b)
+
+                ws = 250 #white threshold
+                output = Adafruit_WS2801.RGB_to_color(shifted_r if shifted_r < ws else ws,  
+                                                      shifted_g if shifted_g < ws else ws,
+                                                      shifted_b if shifted_b < ws else ws)
+                                                      
 
                 ws2801.pixels.set_pixel(led_num, output)
 
@@ -229,6 +253,11 @@ class RambilightDriver(threading.Thread):
         self.backup_settings()
 
     def backup_settings(self):
+	logging.info("Storing new settings:")
+        logging.info("Red-shift:   " + str(self.r_shift))	
+        logging.info("Green-shift: " + str(self.g_shift))	
+        logging.info("Blue-shift:  " + str(self.b_shift))	
+        logging.info("Brightness:  " + str(self.brightness))	
         with open(settings_file, 'w+') as handle:
             pickle.dump((self.r_shift, self.g_shift, self.b_shift, self.brightness), handle)
 
@@ -285,7 +314,7 @@ def average_without_outliers(colors, num_outliers, reference_color):
     return (int(sum[0]/n), int(sum[1]/n), int(sum[2]/2))
 
 
-def s(i):
+def sign(i):
     """Returns 1 if `i` is greate then 0 -1 else"""
     return 1 if (i > 0) else -1
 

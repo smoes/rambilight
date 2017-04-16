@@ -74,7 +74,6 @@ logging.info("Rambilight server started")
 ws2801.pulse()
 ws2801.pulse()
 
-
 while True:
     codeIR = lirc.nextcode()
     if codeIR != []:

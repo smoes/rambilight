@@ -169,6 +169,7 @@ def calibrate_color():
     if calib:
         ws2801.pulse()
         color_calibration.backup_calibration(calib, color_file)
+        color_calibration.load_calibration(color_file, stream)
         rambilight_instance.unpause()
 
 

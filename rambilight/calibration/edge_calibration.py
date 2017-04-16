@@ -22,8 +22,8 @@ from lib import server
 from lib import chromecast
 
 
-border_top = 120
-border_left = 120
+border_top = 160
+border_left = 200
 
 
 def backup_edges(edges, f):
@@ -54,7 +54,7 @@ def calibration_image(res, coords):
     width  = res[0]
     image = np.zeros((height,width,3), np.uint8)
 
-    circle_radius = 17
+    circle_radius = 15
 
     for coord in coords:
         cv2.circle(image, coord, circle_radius, (255,255,255), -1)
@@ -116,13 +116,13 @@ def blob_detector():
     """
     params = cv2.SimpleBlobDetector_Params()
     params.filterByArea = True
-    params.minArea = 3
+    params.minArea = 2
     params.filterByColor = 1
     params.blobColor = 255
     params.filterByCircularity = False
     params.filterByInertia = False
     params.filterByConvexity = 1
-    params.minConvexity = 0.5
+    params.minConvexity = 0.3
 
     return cv2.SimpleBlobDetector_create(params)
 
