@@ -115,7 +115,6 @@ class RambilightDriver(threading.Thread):
 
         while True:
 
-            start_time = time.time()
             # check stopped/paused conditions before starting
             if self.stopped: break
             if self.paused:
@@ -131,11 +130,10 @@ class RambilightDriver(threading.Thread):
                 x_max = coord[1] + blur_area
                 y_min = max(coord[0] - blur_area, 0)
                 y_max = coord[0] + blur_area
-                region = frame[x_min:x_max, y_min:y_max]
-                blurred_region = cv2.blur(region, (blur_strength,blur_strength))
 
-                # extract pixel needed
-                pixel = blurred_region[blur_area][blur_area]
+                region = frame[x_min:x_max, y_min:y_max]
+                pixel = np.mean(region, axis=(0,1))
+
                 r = int(pixel[2])
                 g = int(pixel[1])
                 b = int(pixel[0])
@@ -199,8 +197,6 @@ class RambilightDriver(threading.Thread):
                 registers[led_num] = new_register
 
             ws2801.pixels.show()
-            end_time = time.time()
-            print("Elapsed time was %g seconds" % (end_time - start_time))
 
 
 
